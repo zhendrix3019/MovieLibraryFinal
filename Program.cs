@@ -4,14 +4,13 @@ using System.IO;
 using System.Linq;
 using NLog;
 
-namespace MovieLibraryFinal
+namespace MovieLibrary
 {
     class Program
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private static readonly string file = "movies.csv";
         private static DataTable movieData = new DataTable();
-        private static int maxMovieID = int.MinValue;
 
         static void Main(string[] args)
         {
@@ -19,13 +18,11 @@ namespace MovieLibraryFinal
 
             if (File.Exists(file))
             {
-                // Load data from the existing movies.csv file
                 LoadDataFromFile();
             }
             else
             {
                 logger.Error("The specified file does not exist: {File}", file);
-                // Handle the scenario when the file doesn't exist
             }
 
             while (true)
@@ -44,6 +41,28 @@ namespace MovieLibraryFinal
                 }
             }
         }
+
+       private static void DisplayMovies()
+{
+    if (movieData == null || movieData.Rows.Count == 0)
+    {
+        Console.WriteLine("No movie data available to display.");
+        logger.Info("Attempted to display movies, but no data was found.");
+        return;
+    }
+
+    Console.WriteLine("\nList of Movies:");
+    Console.WriteLine("{0,-10} {1,-50} {2,-50}", "Movie ID", "Title", "Genre");
+
+    foreach (DataRow row in movieData.Rows)
+    {
+        Console.WriteLine("{0,-10} {1,-50} {2,-50}", 
+                          row["movieId"], row["title"], row["genre"]);
+    }
+
+    logger.Info("Movies displayed successfully.");
+}
+
 
         static string DisplayMenuAndGetChoice()
         {
@@ -81,36 +100,40 @@ namespace MovieLibraryFinal
             }
         }
 
-        static void DisplayMovies()
-        {
-            Console.WriteLine("\nList of Movies:");
-            foreach (DataRow row in movieData.Rows)
-            {
-                Console.WriteLine($"ID: {row["movieId"]}, Title: {row["title"]}, Genre: {row["genre"]}");
-            }
-        }
-
         static void AddMovie()
-        {
-            Console.WriteLine("\nEnter the movie title:");
-            string title = Console.ReadLine().Trim();
+{
+    if (movieData == null || movieData.Rows.Count == 0)
+    {
+        Console.WriteLine("Movie data is not loaded. Cannot add a new movie.");
+        return;
+    }
 
-            if (movieData.AsEnumerable().Any(row => row.Field<string>("title").Equals(title, StringComparison.OrdinalIgnoreCase)))
-            {
-                Console.WriteLine("This movie already exists in the library.");
-                return;
-            }
+    Console.WriteLine("\nEnter the movie ID:");
+    if (!int.TryParse(Console.ReadLine().Trim(), out int movieId) || 
+        movieData.AsEnumerable().Any(row => row.Field<string>("movieId") == movieId.ToString()))
+    {
+        Console.WriteLine("Invalid or duplicate movie ID.");
+        return;
+    }
 
-            Console.WriteLine("Enter the genre:");
-            string genre = Console.ReadLine().Trim();
+    Console.WriteLine("Enter the movie title:");
+    string title = Console.ReadLine().Trim();
 
-            maxMovieID = movieData.AsEnumerable().Max(row => Convert.ToInt32(row.Field<string>("movieId")));
-            int newMovieID = maxMovieID + 1;
+    if (movieData.AsEnumerable().Any(row => 
+        row.Field<string>("title")?.Equals(title, StringComparison.OrdinalIgnoreCase) ?? false))
+    {
+        Console.WriteLine("This movie title already exists in the library.");
+        return;
+    }
 
-            movieData.Rows.Add(newMovieID.ToString(), title, genre);
+    Console.WriteLine("Enter the genre:");
+    string genre = Console.ReadLine().Trim();
 
-            SaveDataToFile();
-        }
+    movieData.Rows.Add(movieId.ToString(), title, genre);
+
+    SaveDataToFile();
+}
+
 
         static void SaveDataToFile()
         {
