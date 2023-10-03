@@ -9,20 +9,20 @@ namespace MovieLibrary
     class Program
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        private static readonly string file = "movies.csv";
+        string movieFilePath = Directory.GetCurrentDirectory() + "\\movies.csv";
         private static DataTable movieData = new DataTable();
 
         static void Main(string[] args)
         {
             logger.Info("Program started");
 
-            if (File.Exists(file))
+            if (File.Exists("\\movies.csv"))
             {
                 LoadDataFromFile();
             }
             else
             {
-                logger.Error("The specified file does not exist: {File}", file);
+                logger.Error("The specified file does not exist: {File}", "\\movies.csv");
             }
 
             while (true)
@@ -83,7 +83,7 @@ namespace MovieLibrary
                 movieData.Columns.Add("title");
                 movieData.Columns.Add("genre");
 
-                using (StreamReader sr = new StreamReader(file))
+                using (StreamReader sr = new StreamReader("\\movies.csv"))
                 {
                     sr.ReadLine(); // Skip header row
                     while (!sr.EndOfStream)
@@ -139,7 +139,7 @@ namespace MovieLibrary
         {
             try
             {
-                using (StreamWriter sw = new StreamWriter(file, false))
+                using (StreamWriter sw = new StreamWriter("\\movies.csv", false))
                 {
                     sw.WriteLine("movieId,title,genre");
 
