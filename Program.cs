@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Data;
 using System.IO;
-using System.Text.RegularExpressions;
+using System.Linq;
+using NLog;
 
-namespace MovieLibrary
+namespace MovieLibraryFinal
 {
     class Program
     {
-        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
-        private static readonly string file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "movies.csv");
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly string file = "movies.csv";
         private static DataTable movieData = new DataTable();
         private static int maxMovieID = int.MinValue;
 
@@ -16,12 +17,23 @@ namespace MovieLibrary
         {
             logger.Info("Program started");
 
+            if (File.Exists(file))
+            {
+                // Load data from the existing movies.csv file
+                LoadDataFromFile();
+            }
+            else
+            {
+                logger.Error("The specified file does not exist: {File}", file);
+                // Handle the scenario when the file doesn't exist
+            }
+
             while (true)
             {
                 switch (DisplayMenuAndGetChoice())
                 {
                     case "1":
-                        LoadDataFromFile();
+                        DisplayMovies();
                         break;
                     case "2":
                         AddMovie();
@@ -44,74 +56,81 @@ namespace MovieLibrary
 
         static void LoadDataFromFile()
         {
-            if (!File.Exists(file))
-            {
-                logger.Error("File does not exist: {File}", file);
-                Console.WriteLine("Movies file does not exist.");
-                return;
-            }
-
             try
             {
                 movieData.Clear();
+                movieData = new DataTable();
+                movieData.Columns.Add("movieId");
+                movieData.Columns.Add("title");
+                movieData.Columns.Add("genre");
+
                 using (StreamReader sr = new StreamReader(file))
                 {
-                    // Logic to read from the CSV and populate the DataTable
+                    sr.ReadLine(); // Skip header row
+                    while (!sr.EndOfStream)
+                    {
+                        string[] movieDetails = sr.ReadLine().Split(',');
+                        movieData.Rows.Add(movieDetails);
+                    }
                 }
-
-                DisplayMovies();
+                logger.Info("Data loaded from movies.csv");
             }
             catch (Exception ex)
             {
-                logger.Error(ex.Message);
+                logger.Error(ex, "Error loading movies data from file.");
             }
         }
 
         static void DisplayMovies()
         {
+            Console.WriteLine("\nList of Movies:");
             foreach (DataRow row in movieData.Rows)
             {
-                // Logic to display each movie, similar to your original code
+                Console.WriteLine($"ID: {row["movieId"]}, Title: {row["title"]}, Genre: {row["genre"]}");
             }
         }
 
         static void AddMovie()
         {
-            string title = GetMovieTitleFromUser();
-            string genre = GetMovieGenreFromUser();
-            AddMovieToData(title, genre);
+            Console.WriteLine("\nEnter the movie title:");
+            string title = Console.ReadLine().Trim();
+
+            if (movieData.AsEnumerable().Any(row => row.Field<string>("title").Equals(title, StringComparison.OrdinalIgnoreCase)))
+            {
+                Console.WriteLine("This movie already exists in the library.");
+                return;
+            }
+
+            Console.WriteLine("Enter the genre:");
+            string genre = Console.ReadLine().Trim();
+
+            maxMovieID = movieData.AsEnumerable().Max(row => Convert.ToInt32(row.Field<string>("movieId")));
+            int newMovieID = maxMovieID + 1;
+
+            movieData.Rows.Add(newMovieID.ToString(), title, genre);
+
             SaveDataToFile();
-        }
-
-        static string GetMovieTitleFromUser()
-        {
-            Console.Write("Enter movie title: ");
-            return Console.ReadLine().Trim();
-        }
-
-        static string GetMovieGenreFromUser()
-        {
-            Console.Write("Enter movie genre: ");
-            return Console.ReadLine().Trim();
-        }
-
-        static void AddMovieToData(string title, string genre)
-        {
-            // Logic to add the new movie to the DataTable
         }
 
         static void SaveDataToFile()
         {
             try
             {
-                using (StreamWriter sw = new StreamWriter(file))
+                using (StreamWriter sw = new StreamWriter(file, false))
                 {
-                    // Logic to write the DataTable contents back to the CSV
+                    sw.WriteLine("movieId,title,genre");
+
+                    foreach (DataRow row in movieData.Rows)
+                    {
+                        sw.WriteLine($"{row["movieId"]},{row["title"]},{row["genre"]}");
+                    }
                 }
+
+                Console.WriteLine("New movie added successfully!");
             }
             catch (Exception ex)
             {
-                logger.Error(ex.Message);
+                logger.Error(ex, "Error writing new movie data to file.");
             }
         }
     }
